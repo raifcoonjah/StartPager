@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Start Pager",
   "short_name": "startpager",
-  "version": "7.88.1",
+  "version": "7.88.2",
   "description": "Free, open-source new tab focused on being zen and ultra fast.",
   "author": "Raif Coonjah (raifcoonjah)",
   "icons": {

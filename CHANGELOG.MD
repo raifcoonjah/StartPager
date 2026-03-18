@@ -1,5 +1,8 @@
 # Changelog
 
+## [Version 7.88.2]
+- Minor bug fixes.
+
 ## [Version 7.88.1]
 
 This is minor release however it also includes some stuff that I was working on in the background.
