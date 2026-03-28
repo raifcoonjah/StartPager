@@ -116,3 +116,39 @@ randomPicsumBtn.addEventListener("click", async () => {
     randomPicsumBtn.textContent = originalBtnText;
   }
 });
+
+// automatically switch background hourly, daily, or weekly based on user preference keep in mind that the button is stored in a sidebar thats closed by default.
+const autoSwitchSelect = document.querySelector("#auto_switch_interval");
+
+autoSwitchSelect.addEventListener("change", () => {
+  const selectedInterval = autoSwitchSelect.value;
+  localStorage.setItem("auto_switch_interval", selectedInterval);
+  setupAutoSwitch(selectedInterval);
+});
+
+function setupAutoSwitch(interval) {
+  clearInterval(window.autoSwitchTimer);
+
+  if (interval === "hourly") {
+    window.autoSwitchTimer = setInterval(() => {
+      document.querySelector("#random_unsplash_bg").click();
+    }, 3600000);
+  } else if (interval === "daily") {
+    window.autoSwitchTimer = setInterval(() => {
+      document.querySelector("#random_unsplash_bg").click();
+    }, 86400000);
+  } else if (interval === "weekly") {
+    window.autoSwitchTimer = setInterval(() => {
+      document.querySelector("#random_unsplash_bg").click();
+    }, 604800000);
+  }
+}
+
+// Initialize auto-switching based on saved preference
+const savedInterval = localStorage.getItem("auto_switch_interval");
+if (savedInterval) {
+  autoSwitchSelect.value = savedInterval;
+  setupAutoSwitch(savedInterval);
+} else {
+  autoSwitchSelect.value = "none";
+}

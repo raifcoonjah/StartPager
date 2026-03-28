@@ -1,7 +1,8 @@
 # Changelog
 
 ## [Version 7.88.2]
-- Minor bug fixes.
+
+- Add option to automatically switch the background using three different intervals.
 
 ## [Version 7.88.1]
 
