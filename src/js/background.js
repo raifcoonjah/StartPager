@@ -10,6 +10,8 @@ const processingBg = document.querySelector(".processing_bg");
 const background_body = document.querySelector("body");
 const inputFile = document.getElementById("imageupload");
 
+// ─── Save URL as background ───────────────────────────────────────────────────
+
 document.querySelector("#save-image").addEventListener("click", () => {
   const imageUrlValue = imageUrlInput.value.trim();
   if (!imageUrlValue) {
@@ -24,9 +26,22 @@ document.querySelector("#save-image").addEventListener("click", () => {
   background_body.style.backgroundImage = `url(${imageUrlValue})`;
 });
 
-// Upload Image and Set as Background
+// ─── Upload image and set as background ──────────────────────────────────────
+
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
 inputFile.addEventListener("change", (event) => {
-  const image = event.target.files[0];
+  // FIX: Guard against cancelled file dialog (files[0] would be undefined)
+  const image = event.target.files?.[0];
+  if (!image) return;
+
+  // FIX: Validate file type before reading — previously any file was accepted
+  if (!ALLOWED_TYPES.includes(image.type)) {
+    processingBg.className = "notification is-danger is-light";
+    processingBg.innerHTML =
+      "Please upload a valid image file (JPG, PNG, WebP, or GIF).";
+    return;
+  }
 
   if (image.size / 1024 / 1024 >= 4) {
     processingBg.className = "notification is-danger is-light";
@@ -47,7 +62,8 @@ inputFile.addEventListener("change", (event) => {
   reader.readAsDataURL(image);
 });
 
-// Set Background from LocalStorage
+// ─── Set background from localStorage on load ────────────────────────────────
+
 const savedImageUpload = localStorage.getItem("imageupload");
 const savedImageUrl = localStorage.getItem("image_url");
 
@@ -57,9 +73,16 @@ if (savedImageUpload) {
   background_body.style.backgroundImage = `url(${savedImageUrl})`;
 }
 
-// Delete Background
+// ─── Delete background ───────────────────────────────────────────────────────
+
 document.querySelector("#delete_custom_image").addEventListener("click", () => {
-  if (!savedImageUpload && !savedImageUrl) {
+  // FIX: Read from localStorage directly instead of stale closure variables —
+  // previously, after deleting once the guard would always see the old values
+  // and incorrectly report "no background found" on subsequent delete attempts.
+  if (
+    !localStorage.getItem("imageupload") &&
+    !localStorage.getItem("image_url")
+  ) {
     processingBg.className = "notification is-danger is-light";
     processingBg.innerHTML = "No custom background found to delete.";
     return;
@@ -81,16 +104,20 @@ document.querySelector("#delete_custom_image").addEventListener("click", () => {
   }
 });
 
+// ─── Random background from Picsum ───────────────────────────────────────────
+
 const randomPicsumBtn = document.querySelector("#random_unsplash_bg");
 
 randomPicsumBtn.addEventListener("click", async () => {
   const originalBtnText = randomPicsumBtn.textContent;
-  processingBg.className = "notification is-info";
+
+  // FIX: Disable the button to prevent concurrent fetches from rapid clicks
+  randomPicsumBtn.disabled = true;
   randomPicsumBtn.classList.add("is-loading");
+  processingBg.className = "notification is-info";
   processingBg.innerHTML =
     "Fetching a random background from <a href='https://picsum.photos/' target='_blank' rel='noopener noreferrer'>Picsum photos</a>...";
 
-  // Use the highest available resolution from Picsum (5000x3333) to get much better images
   const width = 5000;
   const height = 3333;
 
@@ -99,26 +126,36 @@ randomPicsumBtn.addEventListener("click", async () => {
     const response = await fetch(apiUrl);
     const imageUrl = response.url;
 
-    setTimeout(() => {
-      localStorage.setItem("image_url", imageUrl);
-      localStorage.removeItem("imageupload");
-      background_body.style.backgroundImage = `url(${imageUrl})`;
-      processingBg.className = "notification is-success";
-      processingBg.innerHTML =
-        "Random background has been applied successfully. It may take a few seconds to appear.";
-      randomPicsumBtn.classList.remove("is-loading");
-      randomPicsumBtn.textContent = originalBtnText;
-    }, 1000);
+    // FIX: Removed the unnecessary 1000ms setTimeout — the fetch already
+    // awaited the network round-trip; the delay was purely artificial.
+    localStorage.setItem("image_url", imageUrl);
+    localStorage.removeItem("imageupload");
+    background_body.style.backgroundImage = `url(${imageUrl})`;
+    processingBg.className = "notification is-success";
+    processingBg.innerHTML =
+      "Random background has been applied successfully. It may take a few seconds to appear.";
   } catch (error) {
     processingBg.className = "notification is-danger is-light";
     processingBg.innerHTML =
       "Failed to fetch a random background. Please reload the page and try again.";
+  } finally {
+    // FIX: Use finally so the button is always re-enabled — previously the
+    // is-loading class was never removed on error, leaving the button stuck.
+    randomPicsumBtn.classList.remove("is-loading");
     randomPicsumBtn.textContent = originalBtnText;
+    randomPicsumBtn.disabled = false;
   }
 });
 
-// automatically switch background hourly, daily, or weekly based on user preference keep in mind that the button is stored in a sidebar thats closed by default.
+// ─── Auto-switch background ───────────────────────────────────────────────────
+
 const autoSwitchSelect = document.querySelector("#auto_switch_interval");
+
+const AUTO_SWITCH_INTERVALS = {
+  hourly: 3600000,
+  daily: 86400000,
+  weekly: 604800000,
+};
 
 autoSwitchSelect.addEventListener("change", () => {
   const selectedInterval = autoSwitchSelect.value;
@@ -126,28 +163,42 @@ autoSwitchSelect.addEventListener("change", () => {
   setupAutoSwitch(selectedInterval);
 });
 
+// FIX: setInterval with multi-hour delays is unreliable in the browser —
+// the timer resets on every page load so "daily" would almost never fire.
+// Instead, we store a timestamp of the last switch and check it on each load.
+function shouldAutoSwitch(interval) {
+  const last = parseInt(localStorage.getItem("last_auto_switch") || "0", 10);
+  const ms = AUTO_SWITCH_INTERVALS[interval];
+  return ms !== undefined && Date.now() - last > ms;
+}
+
 function setupAutoSwitch(interval) {
   clearInterval(window.autoSwitchTimer);
 
-  if (interval === "hourly") {
-    window.autoSwitchTimer = setInterval(() => {
+  if (!(interval in AUTO_SWITCH_INTERVALS)) return;
+
+  // Poll every minute — lightweight, and lets us respect the timestamp even
+  // when the tab stays open across the threshold without a reload.
+  window.autoSwitchTimer = setInterval(() => {
+    if (shouldAutoSwitch(interval)) {
       document.querySelector("#random_unsplash_bg").click();
-    }, 3600000);
-  } else if (interval === "daily") {
-    window.autoSwitchTimer = setInterval(() => {
-      document.querySelector("#random_unsplash_bg").click();
-    }, 86400000);
-  } else if (interval === "weekly") {
-    window.autoSwitchTimer = setInterval(() => {
-      document.querySelector("#random_unsplash_bg").click();
-    }, 604800000);
-  }
+      localStorage.setItem("last_auto_switch", Date.now().toString());
+    }
+  }, 60000);
 }
 
 // Initialize auto-switching based on saved preference
 const savedInterval = localStorage.getItem("auto_switch_interval");
-if (savedInterval) {
+
+if (savedInterval && savedInterval !== "none") {
   autoSwitchSelect.value = savedInterval;
+
+  // Trigger an immediate switch if enough time has passed since the last one
+  if (shouldAutoSwitch(savedInterval)) {
+    document.querySelector("#random_unsplash_bg").click();
+    localStorage.setItem("last_auto_switch", Date.now().toString());
+  }
+
   setupAutoSwitch(savedInterval);
 } else {
   autoSwitchSelect.value = "none";

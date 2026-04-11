@@ -5,6 +5,8 @@
 // \__//_//_/ /_/ /_/ \___/(_)__/ //____/
 //                           /___/
 
+// ─── Greeting ─────────────────────────────────────────────────────────────────
+
 const determineGreet = () => {
   const hours = new Date().getHours();
   const user = localStorage.getItem("user") || "";
@@ -21,11 +23,8 @@ const determineGreet = () => {
 
 determineGreet();
 
-//
-// ========
-// + Time and month text +
-// ========
-//
+// ─── Time and date ────────────────────────────────────────────────────────────
+
 const getTime = () => {
   const date = new Date();
   const hour = date.getHours().toString().padStart(2, "0");
@@ -64,43 +63,40 @@ const getDate = () => {
   return `${cday}, ${cnum} ${cmonth}`;
 };
 
-document.getElementById("date").innerHTML = getDate();
 document.getElementById("time").innerHTML = getTime();
+document.getElementById("date").innerHTML = getDate();
 
 const updateTime = () => {
   document.getElementById("time").innerHTML = getTime();
+
+  document.getElementById("date").innerHTML = getDate();
+  determineGreet();
 };
 
-// Calculate the delay until the next minute
 const calculateDelay = () => {
   const now = new Date();
   return (60 - now.getSeconds()) * 1000;
 };
+let timeIntervalId = null;
 
 const scheduleUpdate = () => {
   updateTime();
+  clearInterval(timeIntervalId);
   setTimeout(() => {
     updateTime();
-    setInterval(updateTime, 60000);
+    timeIntervalId = setInterval(updateTime, 60000);
   }, calculateDelay());
 };
 
 scheduleUpdate();
 
-//
-// ========
-// + Username feature v2 +
-// ========
-//
-//
+// ─── Username ─────────────────────────────────────────────────────────────────
 
 const usernameInput = document.querySelector("#username");
 
 usernameInput.addEventListener("input", () => {
-  let username = usernameInput.value.trim();
-  if (username.length > 20) {
-    username = username.substring(0, 20) + "...";
-  }
+  const username = usernameInput.value.trim().substring(0, 20);
+
   if (username) {
     localStorage.setItem("user", username);
     determineGreet();
@@ -112,9 +108,7 @@ usernameInput.addEventListener("input", () => {
   }
 });
 
-// ========
-// + Dynamic time color from background (iOS-style) +
-// ========
+// ─── Dynamic time color from background (iOS-style) ──────────────────────────
 
 const extractDominantColor = () => {
   const bgImage =
@@ -135,7 +129,11 @@ const extractDominantColor = () => {
     const ctx = canvas.getContext("2d");
     canvas.width = 50;
     canvas.height = 50;
-    ctx.drawImage(img, 0, 0, 50, 50);
+
+    const cropSize = Math.min(img.width, img.height) * 0.4;
+    const sx = (img.width - cropSize) / 2;
+    const sy = (img.height - cropSize) / 2;
+    ctx.drawImage(img, sx, sy, cropSize, cropSize, 0, 0, 50, 50);
 
     const data = ctx.getImageData(0, 0, 50, 50).data;
     let r = 0,
@@ -163,11 +161,11 @@ const extractDominantColor = () => {
     g = Math.min(255, Math.round(mid + (g - mid) * satBoost));
     b = Math.min(255, Math.round(mid + (b - mid) * satBoost));
 
-    // Always push toward a darker, more contrasty shade
-    const darkenFactor = 0.65;
-    const textR = Math.round(r * darkenFactor);
-    const textG = Math.round(g * darkenFactor);
-    const textB = Math.round(b * darkenFactor);
+    // Always push toward a lighter, more visible shade
+    const lightenFactor = 0.6;
+    const textR = Math.min(255, Math.round(r + (255 - r) * lightenFactor));
+    const textG = Math.min(255, Math.round(g + (255 - g) * lightenFactor));
+    const textB = Math.min(255, Math.round(b + (255 - b) * lightenFactor));
 
     const textColor = `rgb(${textR}, ${textG}, ${textB})`;
 
@@ -175,10 +173,8 @@ const extractDominantColor = () => {
     document.getElementById("date").style.color = textColor;
     document.getElementById("greetings").style.color = textColor;
 
-    // Override Bulma's --bulma-primary CSS variable
     document.documentElement.style.setProperty("--bulma-primary", textColor);
 
-    // Also set derived Bulma primary variants for buttons, links, borders etc.
     const lightR = Math.min(255, Math.round(textR + (255 - textR) * 0.85));
     const lightG = Math.min(255, Math.round(textG + (255 - textG) * 0.85));
     const lightB = Math.min(255, Math.round(textB + (255 - textB) * 0.85));
@@ -204,13 +200,13 @@ const clearDynamicColor = () => {
   document.getElementById("date").style.color = "";
   document.getElementById("greetings").style.color = "";
 
-  // Reset Bulma primary variables
   document.documentElement.style.removeProperty("--bulma-primary");
-  // document.documentElement.style.removeProperty("--bulma-primary-light");
-  // document.documentElement.style.removeProperty("--bulma-primary-dark");
+  document.documentElement.style.removeProperty("--bulma-primary-light");
+  document.documentElement.style.removeProperty("--bulma-primary-dark");
 };
 
-// ---- Toggle ----
+// ─── Toggle ───────────────────────────────────────────────────────────────────
+
 const dynamicColorToggle = document.getElementById("toggle-blurred-bg");
 
 const savedDynamicColor = localStorage.getItem("dynamic-color") === "true";
@@ -227,11 +223,18 @@ dynamicColorToggle.addEventListener("change", () => {
   }
 });
 
-// ---- Re-run when background changes ----
+let lastBg = "";
+let debounceTimer = null;
+
 const observer = new MutationObserver(() => {
-  if (localStorage.getItem("dynamic-color") === "true") {
-    extractDominantColor();
-  }
+  if (localStorage.getItem("dynamic-color") !== "true") return;
+
+  const currentBg = document.body.style.backgroundImage;
+  if (currentBg === lastBg) return;
+  lastBg = currentBg;
+
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(extractDominantColor, 300);
 });
 
 observer.observe(document.body, {

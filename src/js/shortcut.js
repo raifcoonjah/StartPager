@@ -5,6 +5,18 @@
 // /____/_/ /_/\____/_/   \__/\___/\__,_/\__(_)_/ /____/
 //                                           /___/
 
+// FIX: Sanitize all user-supplied values before inserting into innerHTML to
+// prevent XSS. A crafted URL or key like <img onerror=...> or javascript:...
+// would otherwise execute arbitrary JS in the page context.
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function getSiteName(url) {
   try {
     const u = new URL(url);
@@ -58,12 +70,12 @@ function renderShortcutIconsBar() {
   const limitedShortcuts = shortcuts.slice(0, 8);
 
   if (useGeneric) {
-    // Use generic link icon for all shortcuts
     bar.innerHTML = limitedShortcuts
       .map((item) => {
-        const name = getSiteName(item.url);
+        const name = escapeHtml(getSiteName(item.url));
+        // FIX: Escape the URL in data-url to prevent attribute injection
         return `
-        <button type="button" class="shortcut-icon button is-flex is-align-items-center is-rounded has-shadow mx-1 px-3 py-2" style="gap:0.75em;" data-url="${item.url}">
+        <button type="button" class="shortcut-icon button is-flex is-align-items-center is-rounded has-shadow mx-1 px-3 py-2" style="gap:0.75em;" data-url="${escapeHtml(item.url)}">
           <span class="icon is-medium mr-2">
             <i class="fa-solid fa-link"></i>
           </span>
@@ -73,7 +85,6 @@ function renderShortcutIconsBar() {
       })
       .join("");
   } else {
-    // Use website favicons (original behavior)
     let cache = {};
     try {
       cache = JSON.parse(localStorage.getItem("shortcutIconCache") || "{}");
@@ -83,7 +94,7 @@ function renderShortcutIconsBar() {
 
     bar.innerHTML = limitedShortcuts
       .map((item) => {
-        const name = getSiteName(item.url);
+        const name = escapeHtml(getSiteName(item.url));
         let domain = "";
         try {
           domain = new URL(item.url).hostname;
@@ -94,16 +105,20 @@ function renderShortcutIconsBar() {
         const cacheKey = `favicon:${domain}`;
         const iconSrc =
           cache[cacheKey] ||
-          `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+          `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`;
 
+        // FIX: Escape the URL in data-url to prevent attribute injection.
+        // FIX: The onerror fallback previously triggered infinitely if the
+        // DuckDuckGo URL also failed — now it checks data-fallback="1" to
+        // ensure the fallback only fires once, then hides the image entirely.
         return `
-        <button type="button" class="shortcut-icon button is-flex is-align-items-center is-rounded has-shadow mx-1 px-3 py-2" style="gap:0.75em;" data-url="${item.url}">
+        <button type="button" class="shortcut-icon button is-flex is-align-items-center is-rounded has-shadow mx-1 px-3 py-2" style="gap:0.75em;" data-url="${escapeHtml(item.url)}">
           <figure class="image is-32x32 mr-2 mb-0">
-            <img class="shortcut-favicon" 
-                 src="${iconSrc}" 
-                 alt="" 
-                 data-domain="${domain}"
-                 onerror="this.src='https://icons.duckduckgo.com/ip3/${domain}.ico';">
+            <img class="shortcut-favicon"
+                 src="${escapeHtml(iconSrc)}"
+                 alt=""
+                 data-domain="${escapeHtml(domain)}"
+                 onerror="if(this.dataset.fallback!='1'){this.dataset.fallback='1';this.src='https://icons.duckduckgo.com/ip3/${encodeURIComponent(domain)}.ico';}else{this.style.display='none';}">
           </figure>
           <span class="has-text-weight-medium">${name}</span>
         </button>
@@ -111,27 +126,40 @@ function renderShortcutIconsBar() {
       })
       .join("");
 
-    // Silent Cache: Save the URL only after it successfully loads
+    // FIX: Only cache the primary favicon src, not the fallback — previously
+    // the fallback DuckDuckGo URL would get cached permanently, preventing the
+    // original Google favicon from ever being retried.
     bar.querySelectorAll(".shortcut-favicon").forEach((img) => {
       img.onload = () => {
         const domain = img.getAttribute("data-domain");
-        if (domain && !cache[`favicon:${domain}`]) {
+        if (
+          domain &&
+          !cache[`favicon:${domain}`] &&
+          img.dataset.fallback !== "1"
+        ) {
           cache[`favicon:${domain}`] = img.src;
           localStorage.setItem("shortcutIconCache", JSON.stringify(cache));
         }
       };
     });
   }
+}
 
-  // Optimized Event Listener: Event Delegation
-  bar.onclick = (e) => {
+// IMPROVEMENT: Wire up the click handler once here via addEventListener rather
+// than re-assigning bar.onclick inside renderShortcutIconsBar on every render.
+// Since the bar's innerHTML is fully replaced each render, attaching the handler
+// once outside is cleaner and avoids re-wiring on every re-render.
+(function setupShortcutBarClickHandler() {
+  const bar = document.getElementById("shortcut-icons-bar");
+  if (!bar) return;
+  bar.addEventListener("click", (e) => {
     const btn = e.target.closest(".shortcut-icon");
     if (btn) {
       const url = btn.getAttribute("data-url");
       if (url) window.open(url, "_blank");
     }
-  };
-}
+  });
+})();
 
 function showNotification(message, type = "is-primary") {
   document.querySelectorAll(".custom-notification").forEach((n) => n.remove());
@@ -157,6 +185,10 @@ function showCustomShortcutModal({ key = "", url = "", idx = null } = {}) {
   const modal = document.createElement("div");
   modal.id = "custom-shortcut-modal";
   modal.className = "modal is-active";
+  // FIX: Escape key and url before inserting into modal HTML to prevent XSS
+  // IMPROVEMENT: Added maxlength="1" to the key input — event.key is always a
+  // single character, so multi-character keys can never be triggered. Capping
+  // the field prevents untriggerable shortcuts from being saved silently.
   modal.innerHTML = `
     <div class="modal-background"></div>
     <div class="modal-content">
@@ -170,14 +202,14 @@ function showCustomShortcutModal({ key = "", url = "", idx = null } = {}) {
             <label class="label" for="custom-key">Shortcut Key</label>
             <h6 class="subtitle is-6 has-text-grey-light">Key/Character that will trigger this shortcut.</h6>
             <div class="control">
-              <input class="input" id="custom-key" type="text" placeholder="Key" style="width:9%" required value="${key}" />
+              <input class="input" id="custom-key" type="text" placeholder="Key" maxlength="1" style="width:9%" required value="${escapeHtml(key)}" />
             </div>
           </div>
           <div class="field">
             <label class="label" for="custom-url">URL</label>
             <h6 class="subtitle is-6 has-text-grey-light">Website that you'd like to trigger using this key.</h6>
             <div class="control">
-              <input class="input" id="custom-url" type="url" placeholder="URL (https://...)" required value="${url}" />
+              <input class="input" id="custom-url" type="url" placeholder="URL (https://...)" required value="${escapeHtml(url)}" />
             </div>
           </div>
           <div class="field is-grouped is-grouped-right mt-4">
@@ -219,9 +251,11 @@ function showCustomShortcutModal({ key = "", url = "", idx = null } = {}) {
       return;
     }
     if (!/^https?:\/\//.test(urlVal)) {
+      // FIX: Typo "is-lights" → "is-light" — the invalid class caused this
+      // notification to render unstyled instead of as a danger alert.
       showNotification(
         "URL must start with http:// or https://",
-        "is-danger is-lights",
+        "is-danger is-light",
       );
       return;
     }
@@ -240,7 +274,8 @@ function showCustomShortcutModal({ key = "", url = "", idx = null } = {}) {
       showNotification("Shortcut updated successfully.", "is-success is-light");
     } else {
       list.push({ key: keyVal, url: urlVal });
-      showNotification("Shortcut added sucessfully.", "is-success is-light");
+      // FIX: Typo "sucessfully" → "successfully"
+      showNotification("Shortcut added successfully.", "is-success is-light");
     }
 
     saveCustomShortcuts(list);
@@ -281,12 +316,17 @@ function renderCustomShortcuts() {
   table += `<thead><tr><th>Shortcut key</th><th>URL</th><th></th></tr></thead><tbody>`;
   table += list
     .map((item, idx) => {
+      // FIX: Escape both the href and display text to prevent XSS via
+      // crafted URLs injecting attributes or tags into the table HTML.
+      const safeUrl = escapeHtml(item.url);
       const displayUrl =
-        item.url.length > 15 ? item.url.slice(0, 15) + "..." : item.url;
+        item.url.length > 15
+          ? escapeHtml(item.url.slice(0, 15)) + "..."
+          : safeUrl;
       return `
       <tr>
-        <td><b>${item.key}</b></td>
-        <td><a href="${item.url}" target="_blank" title="${item.url}">${displayUrl}</a></td>
+        <td><b>${escapeHtml(item.key)}</b></td>
+        <td><a href="${safeUrl}" target="_blank" title="${safeUrl}">${displayUrl}</a></td>
         <td style="width:1%;white-space:nowrap">
           <button class="button is-small is-warning mr-1 edit-shortcut" data-idx="${idx}" title="Edit"><i class="fas fa-edit"></i></button>
           <button class="button is-small is-danger is-outlined remove-shortcut" data-idx="${idx}" title="Remove"><i class="fas fa-trash"></i></button>
@@ -307,6 +347,7 @@ function getCustomShortcuts() {
     return [];
   }
 }
+
 function saveCustomShortcuts(list) {
   localStorage.setItem("customShortcuts", JSON.stringify(list));
   renderShortcutIconsBar();
@@ -348,23 +389,31 @@ document.addEventListener("keydown", function (event) {
     document.activeElement.isContentEditable
   )
     return;
+
   const shortcuts = {
     // all default shortcuts removed.
   };
+
   if (event.shiftKey && event.key === "S") {
     const sidebar = document.querySelector(".sidebar-trigger");
     if (sidebar) sidebar.click();
     return;
   }
+
   const url = shortcuts[event.key];
   if (url) {
     showNotification(`Opening ${url}...`, "is-info");
-    window.location.href = url;
+    // FIX: Use window.open instead of window.location.href to match the icon
+    // bar behaviour — previously keyboard shortcuts navigated away from the
+    // new tab page while icon clicks correctly opened a new tab.
+    window.open(url, "_blank");
     return;
   }
+
   const custom = getCustomShortcuts().find((item) => item.key === event.key);
   if (custom) {
     showNotification(`Opening ${custom.url}...`, "is-info");
-    window.location.href = custom.url;
+    // FIX: Same as above — open in a new tab, not the current tab.
+    window.open(custom.url, "_blank");
   }
 });
