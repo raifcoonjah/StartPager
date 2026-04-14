@@ -22,7 +22,9 @@
   <body>
     <!-- =+=+= Good morning/afternoon/night and time text =+=+= -->
     <div class="main_section">
-      <p class="time" id="time"></p>
+      <div class="time-wrapper" id="time-wrapper">
+        <p class="time" id="time"></p>
+      </div>
       <p class="line" id="line"></p>
       <p class="date" id="date"></p>
       <p class="greetings" id="greetings"></p>
@@ -124,8 +126,24 @@
 
             <div class="settings-card mt-3">
               <div class="settings-item">
+                <h5 class="settings-item-title">Auto-switch background</h5>
+                <div class="control">
+                  <div class="select">
+                    <select id="auto_switch_interval">
+                      <option value="none">Manual</option>
+                      <option value="hourly">Hourly</option>
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-card mt-3">
+              <div class="settings-item">
                 <div class="settings-item-content">
-                  <h5 class="settings-item-title">Darken Background</h5>
+                  <h5 class="settings-item-title">Darker Background</h5>
                   <h6 class="settings-item-subtitle">
                     Reduces eye strain and improves visibility at night.
                   </h6>
@@ -173,46 +191,11 @@
           <!-- Shortcuts Section -->
           <div class="settings-group">
             <h4 class="settings-group-title">Shortcuts</h4>
-            <div class="settings-card">
-              <div class="settings-item">
-                <div class="settings-item-content">
-                  <h5 class="settings-item-title">Default Shortcuts</h5>
-                  <h6 class="settings-item-subtitle">
-                    Access sites quickly using these default shortcuts.
-                  </h6>
-                </div>
-              </div>
-              <div class="settings-item">
-                <article class="message is-warning is-small mb-0">
-                  <div class="message-body">
-                    Please note: All default shortcuts have been removed in this
-                    version. You can add your own custom shortcuts using the
-                    "Add Shortcut" button below.
-                  </div>
-                </article>
-              </div>
-              <div class="settings-item">
-                <table class="table is-fullwidth mb-0">
-                  <thead>
-                    <tr>
-                      <th>Shortcut</th>
-                      <th>URL</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Shift + S</td>
-                      <td>Open Settings</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
 
             <div class="settings-card mt-3">
               <div class="settings-item">
                 <div class="settings-item-content">
-                  <h5 class="settings-item-title">Custom shortcuts (Beta)</h5>
+                  <h5 class="settings-item-title">Startpager Shortcuts</h5>
                   <h6 class="settings-item-subtitle">
                     Set custom shortcuts to access your favorite sites quickly.
                   </h6>
@@ -262,7 +245,7 @@
                     </h6>
                     <p class="is-size-7 has-text-grey mt-1">
                       Improve performance by using a icon instead of website
-                      logo.
+                      logo. (Recommended)
                     </p>
                   </div>
                   <div class="settings-item-action">
@@ -329,6 +312,23 @@
                 <div class="settings-item-action">
                   <input id="toggle-time-font-style" type="checkbox" />
                   <label for="toggle-time-font-style"></label>
+                </div>
+              </div>
+            </div>
+
+            <!-- time with a blurred background -->
+            <div class="settings-card mt-3">
+              <div class="settings-item">
+                <div class="settings-item-content">
+                  <h5 class="settings-item-title">Dynamic color</h5>
+                  <h6 class="settings-item-subtitle">
+                    Automatically change the color of the home text and the
+                    accent color based on the on background image being used.
+                  </h6>
+                </div>
+                <div class="settings-item-action">
+                  <input id="toggle-blurred-bg" type="checkbox" />
+                  <label for="toggle-blurred-bg"></label>
                 </div>
               </div>
             </div>
@@ -433,7 +433,7 @@
                 <div class="settings-item-content">
                   <h5 class="settings-item-title">Start Pager</h5>
                   <h6 class="settings-item-subtitle">
-                    7.88.1 | bulma.io v1.0.4
+                    7.88.2 | bulma.io v1.0.4
                   </h6>
                 </div>
               </div>

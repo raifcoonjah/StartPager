@@ -1,7 +1,13 @@
 # Changelog
 
 ## [Version 7.88.2]
-- Minor bug fixes.
+
+- Added an option to automatically switch the background using three different intervals.
+- Added a new dynamic color feature to automatically change the color of the time and bulma primary accent color based on the current wallpaper.
+- Custom shortcuts is no longer in beta!
+- Backup/restore is no longer in beta!
+- Settings sidebar is now a big bigger.
+- This release includes a lot of bug fixes & security improvements to different aspects of StartPager. **PLEASE NOTE, I USED CLAUDE TO HELP ME DEBUG RESOLVE SOME BUGS**
 
 ## [Version 7.88.1]
 

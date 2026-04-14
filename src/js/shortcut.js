@@ -4,6 +4,14 @@
 //  ___/ / / / / /_/ / /  / /_/ /__/ /_/ / /__   / (__  )
 // /____/_/ /_/\____/_/   \__/\___/\__,_/\__(_)_/ /____/
 //                                           /___/
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 function getSiteName(url) {
   try {
@@ -58,12 +66,11 @@ function renderShortcutIconsBar() {
   const limitedShortcuts = shortcuts.slice(0, 8);
 
   if (useGeneric) {
-    // Use generic link icon for all shortcuts
     bar.innerHTML = limitedShortcuts
       .map((item) => {
-        const name = getSiteName(item.url);
+        const name = escapeHtml(getSiteName(item.url));
         return `
-        <button type="button" class="shortcut-icon button is-flex is-align-items-center is-rounded has-shadow mx-1 px-3 py-2" style="gap:0.75em;" data-url="${item.url}">
+        <button type="button" class="shortcut-icon button is-flex is-align-items-center is-rounded has-shadow mx-1 px-3 py-2" style="gap:0.75em;" data-url="${escapeHtml(item.url)}">
           <span class="icon is-medium mr-2">
             <i class="fa-solid fa-link"></i>
           </span>
@@ -73,7 +80,6 @@ function renderShortcutIconsBar() {
       })
       .join("");
   } else {
-    // Use website favicons (original behavior)
     let cache = {};
     try {
       cache = JSON.parse(localStorage.getItem("shortcutIconCache") || "{}");
@@ -83,7 +89,7 @@ function renderShortcutIconsBar() {
 
     bar.innerHTML = limitedShortcuts
       .map((item) => {
-        const name = getSiteName(item.url);
+        const name = escapeHtml(getSiteName(item.url));
         let domain = "";
         try {
           domain = new URL(item.url).hostname;
@@ -94,44 +100,47 @@ function renderShortcutIconsBar() {
         const cacheKey = `favicon:${domain}`;
         const iconSrc =
           cache[cacheKey] ||
-          `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
-
+          `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`;
         return `
-        <button type="button" class="shortcut-icon button is-flex is-align-items-center is-rounded has-shadow mx-1 px-3 py-2" style="gap:0.75em;" data-url="${item.url}">
+        <button type="button" class="shortcut-icon button is-flex is-align-items-center is-rounded has-shadow mx-1 px-3 py-2" style="gap:0.75em;" data-url="${escapeHtml(item.url)}">
           <figure class="image is-32x32 mr-2 mb-0">
-            <img class="shortcut-favicon" 
-                 src="${iconSrc}" 
-                 alt="" 
-                 data-domain="${domain}"
-                 onerror="this.src='https://icons.duckduckgo.com/ip3/${domain}.ico';">
+            <img class="shortcut-favicon"
+                 src="${escapeHtml(iconSrc)}"
+                 alt=""
+                 data-domain="${escapeHtml(domain)}"
+                 onerror="if(this.dataset.fallback!='1'){this.dataset.fallback='1';this.src='https://icons.duckduckgo.com/ip3/${encodeURIComponent(domain)}.ico';}else{this.style.display='none';}">
           </figure>
           <span class="has-text-weight-medium">${name}</span>
         </button>
       `;
       })
       .join("");
-
-    // Silent Cache: Save the URL only after it successfully loads
     bar.querySelectorAll(".shortcut-favicon").forEach((img) => {
       img.onload = () => {
         const domain = img.getAttribute("data-domain");
-        if (domain && !cache[`favicon:${domain}`]) {
+        if (
+          domain &&
+          !cache[`favicon:${domain}`] &&
+          img.dataset.fallback !== "1"
+        ) {
           cache[`favicon:${domain}`] = img.src;
           localStorage.setItem("shortcutIconCache", JSON.stringify(cache));
         }
       };
     });
   }
-
-  // Optimized Event Listener: Event Delegation
-  bar.onclick = (e) => {
+}
+(function setupShortcutBarClickHandler() {
+  const bar = document.getElementById("shortcut-icons-bar");
+  if (!bar) return;
+  bar.addEventListener("click", (e) => {
     const btn = e.target.closest(".shortcut-icon");
     if (btn) {
       const url = btn.getAttribute("data-url");
       if (url) window.open(url, "_blank");
     }
-  };
-}
+  });
+})();
 
 function showNotification(message, type = "is-primary") {
   document.querySelectorAll(".custom-notification").forEach((n) => n.remove());
@@ -170,14 +179,14 @@ function showCustomShortcutModal({ key = "", url = "", idx = null } = {}) {
             <label class="label" for="custom-key">Shortcut Key</label>
             <h6 class="subtitle is-6 has-text-grey-light">Key/Character that will trigger this shortcut.</h6>
             <div class="control">
-              <input class="input" id="custom-key" type="text" placeholder="Key" style="width:9%" required value="${key}" />
+              <input class="input" id="custom-key" type="text" placeholder="Key" maxlength="1" style="width:9%" required value="${escapeHtml(key)}" />
             </div>
           </div>
           <div class="field">
             <label class="label" for="custom-url">URL</label>
             <h6 class="subtitle is-6 has-text-grey-light">Website that you'd like to trigger using this key.</h6>
             <div class="control">
-              <input class="input" id="custom-url" type="url" placeholder="URL (https://...)" required value="${url}" />
+              <input class="input" id="custom-url" type="url" placeholder="URL (https://...)" required value="${escapeHtml(url)}" />
             </div>
           </div>
           <div class="field is-grouped is-grouped-right mt-4">
@@ -221,7 +230,7 @@ function showCustomShortcutModal({ key = "", url = "", idx = null } = {}) {
     if (!/^https?:\/\//.test(urlVal)) {
       showNotification(
         "URL must start with http:// or https://",
-        "is-danger is-lights",
+        "is-danger is-light",
       );
       return;
     }
@@ -240,7 +249,7 @@ function showCustomShortcutModal({ key = "", url = "", idx = null } = {}) {
       showNotification("Shortcut updated successfully.", "is-success is-light");
     } else {
       list.push({ key: keyVal, url: urlVal });
-      showNotification("Shortcut added sucessfully.", "is-success is-light");
+      showNotification("Shortcut added successfully.", "is-success is-light");
     }
 
     saveCustomShortcuts(list);
@@ -281,12 +290,15 @@ function renderCustomShortcuts() {
   table += `<thead><tr><th>Shortcut key</th><th>URL</th><th></th></tr></thead><tbody>`;
   table += list
     .map((item, idx) => {
+      const safeUrl = escapeHtml(item.url);
       const displayUrl =
-        item.url.length > 15 ? item.url.slice(0, 15) + "..." : item.url;
+        item.url.length > 15
+          ? escapeHtml(item.url.slice(0, 15)) + "..."
+          : safeUrl;
       return `
       <tr>
-        <td><b>${item.key}</b></td>
-        <td><a href="${item.url}" target="_blank" title="${item.url}">${displayUrl}</a></td>
+        <td><b>${escapeHtml(item.key)}</b></td>
+        <td><a href="${safeUrl}" target="_blank" title="${safeUrl}">${displayUrl}</a></td>
         <td style="width:1%;white-space:nowrap">
           <button class="button is-small is-warning mr-1 edit-shortcut" data-idx="${idx}" title="Edit"><i class="fas fa-edit"></i></button>
           <button class="button is-small is-danger is-outlined remove-shortcut" data-idx="${idx}" title="Remove"><i class="fas fa-trash"></i></button>
@@ -307,6 +319,7 @@ function getCustomShortcuts() {
     return [];
   }
 }
+
 function saveCustomShortcuts(list) {
   localStorage.setItem("customShortcuts", JSON.stringify(list));
   renderShortcutIconsBar();
@@ -348,23 +361,27 @@ document.addEventListener("keydown", function (event) {
     document.activeElement.isContentEditable
   )
     return;
+
   const shortcuts = {
     // all default shortcuts removed.
   };
+
   if (event.shiftKey && event.key === "S") {
     const sidebar = document.querySelector(".sidebar-trigger");
     if (sidebar) sidebar.click();
     return;
   }
+
   const url = shortcuts[event.key];
   if (url) {
     showNotification(`Opening ${url}...`, "is-info");
-    window.location.href = url;
+    window.open(url, "_blank");
     return;
   }
+
   const custom = getCustomShortcuts().find((item) => item.key === event.key);
   if (custom) {
     showNotification(`Opening ${custom.url}...`, "is-info");
-    window.location.href = custom.url;
+    window.open(custom.url, "_blank");
   }
 });
