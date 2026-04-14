@@ -31,11 +31,8 @@ document.querySelector("#save-image").addEventListener("click", () => {
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 inputFile.addEventListener("change", (event) => {
-  // FIX: Guard against cancelled file dialog (files[0] would be undefined)
   const image = event.target.files?.[0];
   if (!image) return;
-
-  // FIX: Validate file type before reading — previously any file was accepted
   if (!ALLOWED_TYPES.includes(image.type)) {
     processingBg.className = "notification is-danger is-light";
     processingBg.innerHTML =
@@ -76,9 +73,6 @@ if (savedImageUpload) {
 // ─── Delete background ───────────────────────────────────────────────────────
 
 document.querySelector("#delete_custom_image").addEventListener("click", () => {
-  // FIX: Read from localStorage directly instead of stale closure variables —
-  // previously, after deleting once the guard would always see the old values
-  // and incorrectly report "no background found" on subsequent delete attempts.
   if (
     !localStorage.getItem("imageupload") &&
     !localStorage.getItem("image_url")
@@ -125,9 +119,6 @@ randomPicsumBtn.addEventListener("click", async () => {
     const apiUrl = `https://picsum.photos/${width}/${height}`;
     const response = await fetch(apiUrl);
     const imageUrl = response.url;
-
-    // FIX: Removed the unnecessary 1000ms setTimeout — the fetch already
-    // awaited the network round-trip; the delay was purely artificial.
     localStorage.setItem("image_url", imageUrl);
     localStorage.removeItem("imageupload");
     background_body.style.backgroundImage = `url(${imageUrl})`;
@@ -139,8 +130,6 @@ randomPicsumBtn.addEventListener("click", async () => {
     processingBg.innerHTML =
       "Failed to fetch a random background. Please reload the page and try again.";
   } finally {
-    // FIX: Use finally so the button is always re-enabled — previously the
-    // is-loading class was never removed on error, leaving the button stuck.
     randomPicsumBtn.classList.remove("is-loading");
     randomPicsumBtn.textContent = originalBtnText;
     randomPicsumBtn.disabled = false;
@@ -163,9 +152,6 @@ autoSwitchSelect.addEventListener("change", () => {
   setupAutoSwitch(selectedInterval);
 });
 
-// FIX: setInterval with multi-hour delays is unreliable in the browser —
-// the timer resets on every page load so "daily" would almost never fire.
-// Instead, we store a timestamp of the last switch and check it on each load.
 function shouldAutoSwitch(interval) {
   const last = parseInt(localStorage.getItem("last_auto_switch") || "0", 10);
   const ms = AUTO_SWITCH_INTERVALS[interval];
@@ -176,9 +162,6 @@ function setupAutoSwitch(interval) {
   clearInterval(window.autoSwitchTimer);
 
   if (!(interval in AUTO_SWITCH_INTERVALS)) return;
-
-  // Poll every minute — lightweight, and lets us respect the timestamp even
-  // when the tab stays open across the threshold without a reload.
   window.autoSwitchTimer = setInterval(() => {
     if (shouldAutoSwitch(interval)) {
       document.querySelector("#random_unsplash_bg").click();
@@ -187,13 +170,10 @@ function setupAutoSwitch(interval) {
   }, 60000);
 }
 
-// Initialize auto-switching based on saved preference
 const savedInterval = localStorage.getItem("auto_switch_interval");
 
 if (savedInterval && savedInterval !== "none") {
   autoSwitchSelect.value = savedInterval;
-
-  // Trigger an immediate switch if enough time has passed since the last one
   if (shouldAutoSwitch(savedInterval)) {
     document.querySelector("#random_unsplash_bg").click();
     localStorage.setItem("last_auto_switch", Date.now().toString());
