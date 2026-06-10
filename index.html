@@ -22,9 +22,7 @@
   <body>
     <!-- =+=+= Good morning/afternoon/night and time text =+=+= -->
     <div class="main_section">
-      <div class="time-wrapper" id="time-wrapper">
-        <p class="time" id="time"></p>
-      </div>
+      <p class="time" id="time"></p>
       <p class="line" id="line"></p>
       <p class="date" id="date"></p>
       <p class="greetings" id="greetings"></p>
@@ -82,8 +80,7 @@
                   <h5 class="settings-item-title">URL</h5>
                   <h6 class="settings-item-subtitle">
                     Set a custom background, using URL-based background will
-                    require an active internet connection.
-                  </h6>
+                    require an active internet connection for the first time then images will be cached locally. 
                 </div>
               </div>
               <p class="processing_bg"></p>
@@ -129,7 +126,7 @@
                 <div class="settings-item-content">
                   <h5 class="settings-item-title">Darker Background</h5>
                   <h6 class="settings-item-subtitle">
-                    Reduces eye strain and improves visibility at night.
+                    Reduces eye strain and improves visibility, enabled by default. 
                   </h6>
                 </div>
                 <div class="settings-item-action">
@@ -244,21 +241,6 @@
           <!-- Appearance Section -->
           <div class="settings-group">
             <h4 class="settings-group-title">Appearance</h4>
-            <div class="settings-card">
-              <div class="settings-item">
-                <div class="settings-item-content">
-                  <h5 class="settings-item-title">White font color</h5>
-                  <h6 class="settings-item-subtitle">
-                    Apply white color to home text to improve visibility when
-                    using dark backgrounds.
-                  </h6>
-                </div>
-                <div class="settings-item-action">
-                  <input id="toggle-white-font" type="checkbox" />
-                  <label for="toggle-white-font"></label>
-                </div>
-              </div>
-            </div>
 
             <div class="settings-card mt-3">
               <div class="settings-item">
@@ -275,7 +257,7 @@
                     id="time-font-size"
                     type="range"
                     min="96"
-                    max="350"
+                    max="400"
                     value="96"
                   />
                   <span id="time-font-size-value" class="range-value"
@@ -288,9 +270,9 @@
             <div class="settings-card mt-3">
               <div class="settings-item">
                 <div class="settings-item-content">
-                  <h5 class="settings-item-title">Time font style</h5>
+                  <h5 class="settings-item-title">Vintage time</h5>
                   <h6 class="settings-item-subtitle">
-                    Make time look vintage.
+                    Go back in time and make the font look like it's from the 80s. (Not really)
                   </h6>
                 </div>
                 <div class="settings-item-action">
@@ -306,8 +288,8 @@
                 <div class="settings-item-content">
                   <h5 class="settings-item-title">Dynamic color</h5>
                   <h6 class="settings-item-subtitle">
-                    Automatically change the color of the home text and the
-                    accent color based on the on background image being used.
+                    Automatically change the color of the text on the home screen and the
+                    accent color based on the on background image being used. May take a moment to appear.  
                   </h6>
                 </div>
                 <div class="settings-item-action">
@@ -417,7 +399,7 @@
                 <div class="settings-item-content">
                   <h5 class="settings-item-title">Start Pager</h5>
                   <h6 class="settings-item-subtitle">
-                    7.88.2 | bulma.io v1.0.4
+                    7.88.3 | bulma.io v1.0.4
                   </h6>
                 </div>
               </div>

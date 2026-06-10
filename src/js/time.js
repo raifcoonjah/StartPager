@@ -5,143 +5,124 @@
 // \__//_//_/ /_/ /_/ \___/(_)__/ //____/
 //                           /___/
 
+// Performance Optimization: Cache static DOM nodes globally
+const timeNode = document.getElementById("time");
+const dateNode = document.getElementById("date");
+const greetingsNode = document.getElementById("greetings");
+const usernameInput = document.querySelector("#username");
+const dynamicColorToggle = document.getElementById("toggle-blurred-bg");
+
 // ─── Greeting ─────────────────────────────────────────────────────────────────
 
-const determineGreet = () => {
-  const hours = new Date().getHours();
-  const user = localStorage.getItem("user") || "";
-  const greeting =
-    hours < 12
-      ? "morning"
-      : hours < 18
-        ? "afternoon"
-        : hours < 21
-          ? "evening"
-          : "night";
-  document.getElementById("greetings").innerText = `Good ${greeting}, ${user}.`;
-};
+let lastGreetingPeriod = "";
 
-determineGreet();
+const determineGreet = (forceUpdate = false) => {
+  if (!greetingsNode) return;
+  
+  const hours = new Date().getHours();
+  const greeting = hours < 12 ? "morning" : hours < 18 ? "afternoon" : hours < 21 ? "evening" : "night";
+  
+  // Performance Optimization: Prevent layout thrashing by only modifying DOM if values actually change
+  if (greeting !== lastGreetingPeriod || forceUpdate) {
+    lastGreetingPeriod = greeting;
+    const user = localStorage.getItem("user") || "";
+    greetingsNode.innerText = `Good ${greeting}, ${user}.`;
+  }
+};
 
 // ─── Time and date ────────────────────────────────────────────────────────────
 
-const getTime = () => {
+let lastDateString = "";
+
+const updateTimeAndDate = () => {
   const date = new Date();
-  const hour = date.getHours().toString().padStart(2, "0");
-  const min = date.getMinutes().toString().padStart(2, "0");
-  return `${hour}<span>:</span>${min}`;
-};
+  
+  // 1. Update Time Component (Every minute)
+  if (timeNode) {
+    const hour = date.getHours().toString().padStart(2, "0");
+    const min = date.getMinutes().toString().padStart(2, "0");
+    timeNode.innerHTML = `${hour}<span>:</span>${min}`;
+  }
 
-const getDate = () => {
-  const date = new Date();
-  const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-  const days = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ];
-  const cmonth = months[date.getMonth()];
-  const cday = days[date.getDay()];
-  const cnum = date.getDate().toString().padStart(2, "0");
-  return `${cday}, ${cnum} ${cmonth}`;
-};
+  // 2. Update Date Component (Only if day changes)
+  const currentDateKey = `${date.getDate()}-${date.getMonth()}`;
+  if (currentDateKey !== lastDateString && dateNode) {
+    lastDateString = currentDateKey;
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    
+    const cmonth = months[date.getMonth()];
+    const cday = days[date.getDay()];
+    const cnum = date.getDate().toString().padStart(2, "0");
+    dateNode.innerHTML = `${cday}, ${cnum} ${cmonth}`;
+  }
 
-document.getElementById("time").innerHTML = getTime();
-document.getElementById("date").innerHTML = getDate();
-
-const updateTime = () => {
-  document.getElementById("time").innerHTML = getTime();
-
-  document.getElementById("date").innerHTML = getDate();
+  // 3. Verify Greeting
   determineGreet();
 };
 
-const calculateDelay = () => {
-  const now = new Date();
-  return (60 - now.getSeconds()) * 1000;
-};
-let timeIntervalId = null;
-
 const scheduleUpdate = () => {
-  updateTime();
-  clearInterval(timeIntervalId);
+  updateTimeAndDate();
+  
+  // Calculate exact milliseconds left to sync loop with system minute tick exactly
+  const delay = (60 - new Date().getSeconds()) * 1000;
+  
   setTimeout(() => {
-    updateTime();
-    timeIntervalId = setInterval(updateTime, 60000);
-  }, calculateDelay());
+    updateTimeAndDate();
+    setInterval(updateTimeAndDate, 60000);
+  }, delay);
 };
 
+// Initialize clock tree
 scheduleUpdate();
 
 // ─── Username ─────────────────────────────────────────────────────────────────
 
-const usernameInput = document.querySelector("#username");
+if (usernameInput) {
+  usernameInput.addEventListener("input", () => {
+    const username = usernameInput.value.trim().substring(0, 20);
 
-usernameInput.addEventListener("input", () => {
-  const username = usernameInput.value.trim().substring(0, 20);
-
-  if (username) {
-    localStorage.setItem("user", username);
-    determineGreet();
-    usernameInput.classList.remove("is-danger");
-    usernameInput.classList.add("is-success");
-  } else {
-    usernameInput.classList.remove("is-success");
-    usernameInput.classList.add("is-danger");
-  }
-});
+    if (username) {
+      localStorage.setItem("user", username);
+      determineGreet(true); // Force domestic string rebuild
+      usernameInput.classList.replace("is-danger", "is-success");
+    } else {
+      usernameInput.classList.replace("is-success", "is-danger");
+    }
+  });
+}
 
 // ─── Dynamic time color from background (iOS-style) ──────────────────────────
 
 const extractDominantColor = () => {
-  const bgImage =
-    document.body.style.backgroundImage ||
-    window.getComputedStyle(document.body).backgroundImage;
-
+  const bgImage = document.body.style.backgroundImage || window.getComputedStyle(document.body).backgroundImage;
   if (!bgImage || bgImage === "none") return;
 
   const urlMatch = bgImage.match(/url\(["']?([^"')]+)["']?\)/);
   if (!urlMatch) return;
 
-  const imageUrl = urlMatch[1];
   const img = new Image();
   img.crossOrigin = "anonymous";
 
-  img.onload = () => {
+  img.onload = function() {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-    canvas.width = 50;
-    canvas.height = 50;
+    
+    // Performance Optimization: Downscaled calculation matrix from 50x50 to 16x16.
+    // The browser native GPU pipeline resizes the data layout instantly during drawImage.
+    canvas.width = 16;
+    canvas.height = 16;
 
-    const cropSize = Math.min(img.width, img.height) * 0.4;
-    const sx = (img.width - cropSize) / 2;
-    const sy = (img.height - cropSize) / 2;
-    ctx.drawImage(img, sx, sy, cropSize, cropSize, 0, 0, 50, 50);
+    const cropSize = Math.min(this.width, this.height) * 0.4;
+    const sx = (this.width - cropSize) * 0.5;
+    const sy = (this.height - cropSize) * 0.5;
+    ctx.drawImage(this, sx, sy, cropSize, cropSize, 0, 0, 16, 16);
 
-    const data = ctx.getImageData(0, 0, 50, 50).data;
-    let r = 0,
-      g = 0,
-      b = 0,
-      count = 0;
+    const data = ctx.getImageData(0, 0, 16, 16).data;
+    let r = 0, g = 0, b = 0, count = 0;
 
-    for (let i = 0; i < data.length; i += 16) {
+    // Linear scanning loop is now extremely cheap since the dataset is small
+    for (let i = 0; i < data.length; i += 4) {
       r += data[i];
       g += data[i + 1];
       b += data[i + 2];
@@ -152,76 +133,64 @@ const extractDominantColor = () => {
     g = Math.round(g / count);
     b = Math.round(b / count);
 
-    // Boost saturation so washed-out averages become vivid
+    // Boost saturation
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
+    const mid = (max + min) * 0.5;
     const satBoost = 1.8;
-    const mid = (max + min) / 2;
     r = Math.min(255, Math.round(mid + (r - mid) * satBoost));
     g = Math.min(255, Math.round(mid + (g - mid) * satBoost));
     b = Math.min(255, Math.round(mid + (b - mid) * satBoost));
 
-    // Always push toward a lighter, more visible shade
+    // Lighten calculation
     const lightenFactor = 0.6;
     const textR = Math.min(255, Math.round(r + (255 - r) * lightenFactor));
     const textG = Math.min(255, Math.round(g + (255 - g) * lightenFactor));
     const textB = Math.min(255, Math.round(b + (255 - b) * lightenFactor));
-
     const textColor = `rgb(${textR}, ${textG}, ${textB})`;
 
-    document.getElementById("time").style.color = textColor;
-    document.getElementById("date").style.color = textColor;
-    document.getElementById("greetings").style.color = textColor;
+    // Apply colors batch inline style calls
+    if (timeNode) timeNode.style.color = textColor;
+    if (dateNode) dateNode.style.color = textColor;
+    if (greetingsNode) greetingsNode.style.color = textColor;
 
-    document.documentElement.style.setProperty("--bulma-primary", textColor);
-
-    const lightR = Math.min(255, Math.round(textR + (255 - textR) * 0.85));
-    const lightG = Math.min(255, Math.round(textG + (255 - textG) * 0.85));
-    const lightB = Math.min(255, Math.round(textB + (255 - textB) * 0.85));
-    document.documentElement.style.setProperty(
-      "--bulma-primary-light",
-      `rgb(${lightR}, ${lightG}, ${lightB})`,
-    );
-
-    const darkR = Math.round(textR * 0.7);
-    const darkG = Math.round(textG * 0.7);
-    const darkB = Math.round(textB * 0.7);
-    document.documentElement.style.setProperty(
-      "--bulma-primary-dark",
-      `rgb(${darkR}, ${darkG}, ${darkB})`,
-    );
+    const docStyle = document.documentElement.style;
+    docStyle.setProperty("--bulma-primary", textColor);
+    docStyle.setProperty("--bulma-primary-light", `rgb(${Math.min(255, Math.round(textR + (255 - textR) * 0.85))}, ${Math.min(255, Math.round(textG + (255 - textG) * 0.85))}, ${Math.min(255, Math.round(textB + (255 - textB) * 0.85))})`);
+    docStyle.setProperty("--bulma-primary-dark", `rgb(${Math.round(textR * 0.7)}, ${Math.round(textG * 0.7)}, ${Math.round(textB * 0.7)})`);
   };
 
-  img.src = imageUrl;
+  img.src = urlMatch[1];
 };
 
 const clearDynamicColor = () => {
-  document.getElementById("time").style.color = "";
-  document.getElementById("date").style.color = "";
-  document.getElementById("greetings").style.color = "";
+  if (timeNode) timeNode.style.color = "";
+  if (dateNode) dateNode.style.color = "";
+  if (greetingsNode) greetingsNode.style.color = "";
 
-  document.documentElement.style.removeProperty("--bulma-primary");
-  document.documentElement.style.removeProperty("--bulma-primary-light");
-  document.documentElement.style.removeProperty("--bulma-primary-dark");
+  const docStyle = document.documentElement.style;
+  docStyle.removeProperty("--bulma-primary");
+  docStyle.removeProperty("--bulma-primary-light");
+  docStyle.removeProperty("--bulma-primary-dark");
 };
 
-// ─── Toggle ───────────────────────────────────────────────────────────────────
+// ─── Toggle & Observer Init ───────────────────────────────────────────────────
 
-const dynamicColorToggle = document.getElementById("toggle-blurred-bg");
+if (dynamicColorToggle) {
+  const savedDynamicColor = localStorage.getItem("dynamic-color") === "true";
+  dynamicColorToggle.checked = savedDynamicColor;
+  if (savedDynamicColor) extractDominantColor();
 
-const savedDynamicColor = localStorage.getItem("dynamic-color") === "true";
-dynamicColorToggle.checked = savedDynamicColor;
-if (savedDynamicColor) extractDominantColor();
-
-dynamicColorToggle.addEventListener("change", () => {
-  if (dynamicColorToggle.checked) {
-    localStorage.setItem("dynamic-color", "true");
-    extractDominantColor();
-  } else {
-    localStorage.setItem("dynamic-color", "false");
-    clearDynamicColor();
-  }
-});
+  dynamicColorToggle.addEventListener("change", () => {
+    if (dynamicColorToggle.checked) {
+      localStorage.setItem("dynamic-color", "true");
+      extractDominantColor();
+    } else {
+      localStorage.setItem("dynamic-color", "false");
+      clearDynamicColor();
+    }
+  });
+}
 
 let lastBg = "";
 let debounceTimer = null;
@@ -234,7 +203,7 @@ const observer = new MutationObserver(() => {
   lastBg = currentBg;
 
   clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(extractDominantColor, 300);
+  debounceTimer = setTimeout(extractDominantColor, 250);
 });
 
 observer.observe(document.body, {

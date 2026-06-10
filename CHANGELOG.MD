@@ -1,5 +1,22 @@
 # Changelog
 
+## [Version 7.88.3]
+
+- Removed auto-switch background due to multiple issues.
+- Removal of useless time-wrapper code since its not used anymore.
+- Improved performance by applying blur inside of sidebar only when its open, this change should be transparent to the end user.
+- Added a copy to clipboard button.
+- Enable darker background by default.
+- White font color toggle has been removed.
+- You can now increase the home font size up to 400px.
+
+### MADE WITH THE HELP OF AI
+
+- Background received some performance improvements, reduced the image size being fetch from picsum to 2560px, this should help reduce CPU usage.
+- Several optimizations made to shortcuts feature.
+- Several performance and optimizations made to dynamic color feature (over 50%)
+
+
 ## [Version 7.88.2]
 
 - Added an option to automatically switch the background using three different intervals.

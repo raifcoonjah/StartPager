@@ -191,29 +191,6 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 });
 
-// APPEARANCE SETTINGS
-// TODO: MOVE TO A NEW JS FILE.
-document
-  .getElementById("toggle-white-font")
-  .addEventListener("change", function () {
-    const isChecked = this.checked;
-    localStorage.setItem("whiteFontColor", isChecked);
-    applyWhiteFontColor(isChecked);
-  });
-function applyWhiteFontColor(isWhite) {
-  const elements = document.querySelectorAll(
-    "#time, #date, #greetings, .shortcut-icon span, .shortcut-icon i, .the-pill span, .the-pill i",
-  );
-  elements.forEach((el) => {
-    el.style.color = isWhite ? "#fff" : "";
-  });
-
-  const line = document.getElementById("line");
-  if (line) {
-    line.style.borderColor = isWhite ? "#fff" : "";
-  }
-}
-
 document.addEventListener("DOMContentLoaded", function () {
   const isWhite = localStorage.getItem("whiteFontColor") === "true";
   document.getElementById("toggle-white-font").checked = isWhite;
@@ -275,12 +252,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
 const nightDarkenToggle = document.getElementById("toggle-darken-bg-night");
 
-/**
- * Applies a darkening overlay using background-blend-mode.
- * We use a CSS variable to handle the "On/Off" state cleanly.
- */
 function applyManualDarken() {
-  const isEnabled = localStorage.getItem("darkenBgAtNight") === "true";
+  // Enabled by default: if the key doesn't exist in localStorage, treat it as true so its enable by defaut. 
+  const isEnabled = localStorage.getItem("darkenBgAtNight") !== "false";
   const body = document.body;
 
   if (isEnabled) {
@@ -292,7 +266,6 @@ function applyManualDarken() {
   }
 }
 
-// 1. Toggle Listener
 if (nightDarkenToggle) {
   nightDarkenToggle.addEventListener("change", function () {
     localStorage.setItem("darkenBgAtNight", this.checked);
@@ -302,7 +275,7 @@ if (nightDarkenToggle) {
 
 // 2. Initialization on Load
 document.addEventListener("DOMContentLoaded", function () {
-  const savedState = localStorage.getItem("darkenBgAtNight") === "true";
+  const savedState = localStorage.getItem("darkenBgAtNight") !== "false";
 
   if (nightDarkenToggle) {
     nightDarkenToggle.checked = savedState;

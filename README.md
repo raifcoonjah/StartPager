@@ -1,3 +1,6 @@
+> ** AI Notice: AI is used only for optimization and performance fixes/improvements **
+
+
 ```shell
    _____ __             __     ____                       
   / ___// /_____ ______/ /_   / __ \____ _____ ____  _____

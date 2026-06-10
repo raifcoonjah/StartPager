@@ -140,7 +140,7 @@ body {
 .shortcut-icon:hover {
   /* Use box-shadow instead of outline for perfect rounded corners */
   box-shadow: 0 0 0 4px var(--bulma-primary);
-  transform: scale(1.025);
+  transform: scale(1.030);
   /* Remove any browser default outline */
   outline: none;
 }
