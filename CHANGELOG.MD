@@ -1,6 +1,6 @@
 # Changelog
 
-## [Version 7.88.4]
+## [Version 7.88.9]
 - Added a rotating animation when you hover on "open-settings" button.
 - Added quote feature, thats 100% offline!
 
