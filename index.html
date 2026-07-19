@@ -26,6 +26,10 @@
       <p class="line" id="line"></p>
       <p class="date" id="date"></p>
       <p class="greetings" id="greetings"></p>
+      <div id="quote-wrapper" class="quote-wrapper">
+        <p class="quote" id="quote"></p>
+        <p class="quote-author" id="quote-author"></p>
+      </div>
       <div
         id="shortcut-icons-bar"
         class="shortcut-icons-bar is-flex is-flex-wrap-wrap is-justify-content-center mb-4"
@@ -299,6 +303,41 @@
               </div>
             </div>
           </div>
+          <div class="settings-group">
+            <h4 class="settings-group-title">Quotes</h4>
+ 
+            <div class="settings-card mt-3">
+              <div class="settings-item">
+                <div class="settings-item-content">
+                  <h5 class="settings-item-title">Show quotes</h5>
+                  <h6 class="settings-item-subtitle">
+                    Display an inspirational quote on your homescreen.
+                  </h6>
+                </div>
+                <div class="settings-item-action">
+                  <input id="toggle-show-quotes" type="checkbox" />
+                  <label for="toggle-show-quotes"></label>
+                </div>
+              </div>
+            </div>
+ 
+            <div class="settings-card mt-3">
+              <div class="settings-item">
+                <div class="settings-item-content">
+                  <h5 class="settings-item-title">New quote every load</h5>
+                  <h6 class="settings-item-subtitle">
+                    When off, you'll see the same quote all day. When on, a
+                    new quote appears every time you open a new tab. You can
+                    also click the quote at any time for another one.
+                  </h6>
+                </div>
+                <div class="settings-item-action">
+                  <input id="toggle-quote-every-load" type="checkbox" />
+                  <label for="toggle-quote-every-load"></label>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <!-- Backup/Restore Section -->
           <div class="settings-group">
@@ -449,6 +488,7 @@
       <script type="module" src="./src/js/shortcut.js"></script>
       <script type="module" src="./src/js/time.js"></script>
       <script type="module" src="./src/js/setting.js"></script>
+      <script type="module" src="./src/js/quotes.js"></script>
     </main>
   </body>
 </html>

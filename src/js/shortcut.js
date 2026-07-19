@@ -4,8 +4,6 @@
 //  ___/ / / / / /_/ / /  / /_/ /__/ /_/ / /__   / (__  )
 // /____/_/ /_/\____/_/   \__/\___/\__,_/\__(_)_/ /____/
 //                                           /___/
-
-// Performance Optimization: Cache frequently looked up DOM nodes globally to avoid recalculation cost
 const shortcutBarNode = document.getElementById("shortcut-icons-bar");
 const shortcutListContainer = document.getElementById("custom-shortcut-list");
 
@@ -49,6 +47,19 @@ function getFavicon(url) {
   } catch {
     return "";
   }
+}
+
+// OPTIMIZATION: the previous "debounced batch update" comment didn't match
+// the code — it called localStorage.setItem on every single icon's onload,
+// so up to 8 icons loading concurrently meant 8 redundant JSON.stringify +
+// write cycles of the whole cache object. This is now a real debounce: writes
+// are collected and flushed once, shortly after the last icon finishes.
+let faviconCacheSaveTimer = null;
+function scheduleFaviconCacheSave(cache) {
+  clearTimeout(faviconCacheSaveTimer);
+  faviconCacheSaveTimer = setTimeout(() => {
+    localStorage.setItem("shortcutIconCache", JSON.stringify(cache));
+  }, 300);
 }
 
 function renderShortcutIconsBar() {
@@ -102,13 +113,17 @@ function renderShortcutIconsBar() {
 
         const cacheKey = `favicon:${domain}`;
         const iconSrc = cache[cacheKey] || `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`;
-        
+
+        // OPTIMIZATION: loading="lazy" defers offscreen icon fetches, and
+        // decoding="async" stops image decode from blocking the main thread/paint.
         return `
         <button type="button" class="shortcut-icon button is-flex is-align-items-center is-rounded has-shadow mx-1 px-3 py-2" style="gap:0.75em;" data-url="${escapeHtml(item.url)}">
           <figure class="image is-32x32 mr-2 mb-0">
             <img class="shortcut-favicon"
                  src="${escapeHtml(iconSrc)}"
                  alt=""
+                 loading="lazy"
+                 decoding="async"
                  data-domain="${escapeHtml(domain)}"
                  onerror="if(this.dataset.fallback!='1'){this.dataset.fallback='1';this.src='https://icons.duckduckgo.com/ip3/${encodeURIComponent(domain)}.ico';}else{this.style.display='none';}">
           </figure>
@@ -119,18 +134,12 @@ function renderShortcutIconsBar() {
       .join("");
 
     // Performance Optimization: Handled with a single bound check loop instead of spawning micro closures
-    let cacheUpdated = false;
     shortcutBarNode.querySelectorAll(".shortcut-favicon").forEach((img) => {
       img.onload = () => {
         const domain = img.getAttribute("data-domain");
         if (domain && !cache[`favicon:${domain}`] && img.dataset.fallback !== "1") {
           cache[`favicon:${domain}`] = img.src;
-          cacheUpdated = true;
-          
-          // Debounced batch updates to localStorage to save I/O cycles
-          if (cacheUpdated) {
-            localStorage.setItem("shortcutIconCache", JSON.stringify(cache));
-          }
+          scheduleFaviconCacheSave(cache);
         }
       };
     });
@@ -169,7 +178,7 @@ function showNotification(message, type = "is-primary") {
 function showCustomShortcutModal({ key = "", url = "", idx = null } = {}) {
   const existingModal = document.getElementById("custom-shortcut-modal");
   if (existingModal) existingModal.remove();
-  
+
   const modal = document.createElement("div");
   modal.id = "custom-shortcut-modal";
   modal.className = "modal is-active";
@@ -213,11 +222,11 @@ function showCustomShortcutModal({ key = "", url = "", idx = null } = {}) {
   const keyInput = modal.querySelector("#custom-key");
   const urlInput = modal.querySelector("#custom-url");
   const form = modal.querySelector("#custom-shortcut-form");
-  
+
   const closeModal = () => modal.remove();
   modal.querySelector(".modal-background").addEventListener("click", closeModal, { once: true });
   modal.querySelector("#cancel-shortcut-btn").addEventListener("click", closeModal, { once: true });
-  
+
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const keyVal = keyInput.value.trim();
@@ -261,8 +270,7 @@ if (shortcutListContainer) {
     const removeBtn = target.closest(".remove-shortcut");
     const editBtn = target.closest(".edit-shortcut");
     const copyBtn = target.closest(".copy-shortcut");
-    
-    // Cache the array parse cycle once per operation block
+
     let list = null;
 
     if (removeBtn) {
@@ -294,12 +302,12 @@ if (shortcutListContainer) {
 function renderCustomShortcuts() {
   if (!shortcutListContainer) return;
   const list = getCustomShortcuts();
-  
+
   if (!list.length) {
     shortcutListContainer.innerHTML = `<p class="has-text-grey-light has-text-centered is-size-6" style="padding:10px;">No custom shortcuts yet :(</p>`;
     return;
   }
-  
+
   let table = `<table class="table is-fullwidth is-hoverable"><thead><tr><th>Shortcut key</th><th>URL</th><th></th></tr></thead><tbody>`;
   table += list
     .map((item, idx) => {

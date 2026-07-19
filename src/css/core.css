@@ -78,8 +78,26 @@ body {
 /* ==========================================
    DECORATIVE ELEMENTS
    ========================================== */
+.quote-wrapper {
+  max-width: 600px;
+  margin: 0 auto 1rem;
+  padding: 0 1rem;
+}
+ 
 .quote {
   font-style: italic;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+ 
+.quote:hover {
+  opacity: 0.75;
+}
+ 
+.quote-author {
+  font-size: 0.85rem;
+  opacity: 0.7;
+  margin-top: 4px;
 }
 
 .line {
@@ -121,9 +139,6 @@ body {
     transform 0.15s ease-out,
     outline 0.15s ease-out;
   border: 1px solid transparent !important;
-  transition:
-    transform 0.15s ease-out,
-    box-shadow 0.15s ease-out;
   background-color: rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(5px);
   border: 1px solid rgba(220, 220, 225, 0.546) !important;
@@ -159,4 +174,12 @@ table {
   border-radius: var(--bulma-radius) !important;
   backdrop-filter: blur(10px);
   background-color: rgba(255, 255, 255, 0.795);
+}
+
+.open-settings-btn .icon i {
+  transition: transform 0.3s ease;
+}
+
+.open-settings-btn:hover .icon i {
+  transform: rotate(45deg);
 }

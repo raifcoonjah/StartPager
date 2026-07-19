@@ -1,5 +1,22 @@
 # Changelog
 
+## [Version 7.88.4]
+- Added a rotating animation when you hover on "open-settings" button.
+- Added quote feature, thats 100% offline!
+
+Optimization:
+- Added lazy loading and decoding for shortcuts images.
+- Background images are now stored in IndexedDB as raw Blobs instead of
+localStorage as base64 strings. localStorage is synchronous and forces
+the browser to parse a multi-MB base64 string on every page load before
+anything else can run. IndexedDB is async and stores binary data natively
+(no ~33% base64 size inflation), so page load is no longer blocked by it.
+- The accent color palette (used by time.js) is computed ONCE, right here,
+at save time — instead of being re-derived from a full image decode on
+every page load / background change.
+- And many other optimization tweaks made with the help of claude.
+
+
 ## [Version 7.88.3]
 
 - Removed auto-switch background due to multiple issues.
