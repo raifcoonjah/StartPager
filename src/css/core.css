@@ -121,6 +121,8 @@ body {
   top: 1rem;
   right: 1rem;
   background-color: rgba(208, 208, 208, 0.38);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(220, 220, 225, 0.546);
   color: #000;
 }
 
