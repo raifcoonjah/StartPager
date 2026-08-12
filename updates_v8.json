@@ -3,6 +3,10 @@
     "{748c022e-c513-4a7d-98e2-841da480ace6}": {
       "updates": [
         {
+          "version": "7.88.10",
+          "update_link": "https://github.com/rc0j/StartPager/releases/download/v7.88.10/6a85ba291d39426e8c13-7.88.10.xpi"
+        },
+        {
           "version": "7.88.9",
           "update_link": "https://github.com/rc0j/StartPager/releases/download/v7.88.9/6a85ba291d39426e8c13-7.88.9.xpi"
         },
