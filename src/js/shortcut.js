@@ -4,8 +4,11 @@
 //  ___/ / / / / /_/ / /  / /_/ /__/ /_/ / /__   / (__  )
 // /____/_/ /_/\____/_/   \__/\___/\__,_/\__(_)_/ /____/
 //                                           /___/
+
 const shortcutBarNode = document.getElementById("shortcut-icons-bar");
 const shortcutListContainer = document.getElementById("custom-shortcut-list");
+
+/* ─── Helpers ─────────────────────────────────────────────────────────────── */
 
 function escapeHtml(str) {
   return String(str)
@@ -24,15 +27,11 @@ function getSiteName(url) {
 
     if (hostname.includes("reddit.com") && pathname) {
       const subredditMatch = pathname.match(/^\/r\/([^\/]+)/);
-      if (subredditMatch) {
-        return `r/${subredditMatch[1]}`;
-      }
+      if (subredditMatch) return `r/${subredditMatch[1]}`;
     }
 
     let name = hostname;
-    if (pathname && pathname !== "/") {
-      name += pathname;
-    }
+    if (pathname && pathname !== "/") name += pathname;
     return name.length > 10 ? name.slice(0, 10) + "..." : name;
   } catch {
     const s = String(url || "");
@@ -49,11 +48,8 @@ function getFavicon(url) {
   }
 }
 
-// OPTIMIZATION: the previous "debounced batch update" comment didn't match
-// the code — it called localStorage.setItem on every single icon's onload,
-// so up to 8 icons loading concurrently meant 8 redundant JSON.stringify +
-// write cycles of the whole cache object. This is now a real debounce: writes
-// are collected and flushed once, shortly after the last icon finishes.
+/* ─── Favicon cache ───────────────────────────────────────────────────────── */
+
 let faviconCacheSaveTimer = null;
 function scheduleFaviconCacheSave(cache) {
   clearTimeout(faviconCacheSaveTimer);
@@ -61,6 +57,8 @@ function scheduleFaviconCacheSave(cache) {
     localStorage.setItem("shortcutIconCache", JSON.stringify(cache));
   }, 300);
 }
+
+/* ─── Icon bar ────────────────────────────────────────────────────────────── */
 
 function renderShortcutIconsBar() {
   if (!shortcutBarNode) return;
@@ -76,64 +74,56 @@ function renderShortcutIconsBar() {
   }
 
   shortcutBarNode.style.display = "flex";
-  const limitedShortcuts = shortcuts.slice(0, 8);
+  const limited = shortcuts.slice(0, 8);
 
-  // Performance Optimization: Streamlined map constructions to reduce layout thrashing
   if (useGeneric) {
-    shortcutBarNode.innerHTML = limitedShortcuts
+    shortcutBarNode.innerHTML = limited
       .map((item) => {
         const name = escapeHtml(getSiteName(item.url));
         return `
         <button type="button" class="shortcut-icon button is-flex is-align-items-center is-rounded has-shadow mx-1 px-3 py-2" style="gap:0.75em;" data-url="${escapeHtml(item.url)}">
-          <span class="icon is-medium mr-2">
-            <i class="fa-solid fa-link"></i>
-          </span>
+          <span class="icon is-medium mr-2"><i class="fa-solid fa-link"></i></span>
           <span class="has-text-weight-medium">${name}</span>
-        </button>
-      `;
+        </button>`;
       })
       .join("");
   } else {
     let cache = {};
     try {
       cache = JSON.parse(localStorage.getItem("shortcutIconCache") || "{}");
-    } catch (e) {
+    } catch {
       cache = {};
     }
 
-    shortcutBarNode.innerHTML = limitedShortcuts
+    shortcutBarNode.innerHTML = limited
       .map((item) => {
         const name = escapeHtml(getSiteName(item.url));
         let domain = "";
         try {
           domain = new URL(item.url).hostname;
-        } catch (e) {
+        } catch {
           domain = item.url;
         }
 
         const cacheKey = `favicon:${domain}`;
-        const iconSrc = cache[cacheKey] || `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`;
+        const iconSrc =
+          cache[cacheKey] ||
+          `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`;
 
-        // OPTIMIZATION: loading="lazy" defers offscreen icon fetches, and
-        // decoding="async" stops image decode from blocking the main thread/paint.
         return `
         <button type="button" class="shortcut-icon button is-flex is-align-items-center is-rounded has-shadow mx-1 px-3 py-2" style="gap:0.75em;" data-url="${escapeHtml(item.url)}">
           <figure class="image is-32x32 mr-2 mb-0">
             <img class="shortcut-favicon"
                  src="${escapeHtml(iconSrc)}"
-                 alt=""
-                 loading="lazy"
-                 decoding="async"
+                 alt="" loading="lazy" decoding="async"
                  data-domain="${escapeHtml(domain)}"
                  onerror="if(this.dataset.fallback!='1'){this.dataset.fallback='1';this.src='https://icons.duckduckgo.com/ip3/${encodeURIComponent(domain)}.ico';}else{this.style.display='none';}">
           </figure>
           <span class="has-text-weight-medium">${name}</span>
-        </button>
-      `;
+        </button>`;
       })
       .join("");
 
-    // Performance Optimization: Handled with a single bound check loop instead of spawning micro closures
     shortcutBarNode.querySelectorAll(".shortcut-favicon").forEach((img) => {
       img.onload = () => {
         const domain = img.getAttribute("data-domain");
@@ -157,6 +147,8 @@ function renderShortcutIconsBar() {
   });
 })();
 
+/* ─── Notifications ───────────────────────────────────────────────────────── */
+
 function showNotification(message, type = "is-primary") {
   document.querySelectorAll(".custom-notification").forEach((n) => n.remove());
   const notif = Object.assign(document.createElement("div"), {
@@ -174,6 +166,8 @@ function showNotification(message, type = "is-primary") {
   document.body.appendChild(notif);
   setTimeout(() => notif.remove(), 1800);
 }
+
+/* ─── Add / Edit modal ────────────────────────────────────────────────────── */
 
 function showCustomShortcutModal({ key = "", url = "", idx = null } = {}) {
   const existingModal = document.getElementById("custom-shortcut-modal");
@@ -264,18 +258,89 @@ function showCustomShortcutModal({ key = "", url = "", idx = null } = {}) {
 
 document.getElementById("open-custom-shortcut-modal").onclick = showCustomShortcutModal;
 
-if (shortcutListContainer) {
-  shortcutListContainer.addEventListener("click", (e) => {
-    const target = e.target;
-    const removeBtn = target.closest(".remove-shortcut");
-    const editBtn = target.closest(".edit-shortcut");
-    const copyBtn = target.closest(".copy-shortcut");
+/* ─── Drag-and-drop styles ────────────────────────────────────────────────── */
 
-    let list = null;
+(function injectDragStyles() {
+  if (document.getElementById("sp-drag-styles")) return;
+  const s = document.createElement("style");
+  s.id = "sp-drag-styles";
+  s.textContent = `
+    .drag-handle { cursor: grab; padding: 0 8px; color: #b5b5b5; display: inline-block; touch-action: none; user-select: none; }
+    .drag-handle:hover { color: #7a7a7a; }
+    .dragging-source { opacity: 0.25 !important; }
+    .drop-indicator td { height: 3px !important; background: #48c78e !important; padding: 0 !important; border: none !important; }
+    .shortcut-row.flash { animation: spRowFlash 0.5s ease; }
+    @keyframes spRowFlash {
+      0%   { background-color: rgba(72, 199, 142, 0.25); }
+      100% { background-color: transparent; }
+    }
+  `;
+  document.head.appendChild(s);
+})();
+
+/* ─── Drag-and-drop state ─────────────────────────────────────────────────── */
+
+let dragState = null;
+
+/* ─── Shortcut list interactions ──────────────────────────────────────────── */
+
+if (shortcutListContainer) {
+  /* Pointer-based drag-and-drop */
+  shortcutListContainer.addEventListener("pointerdown", (e) => {
+    const handle = e.target.closest(".drag-handle");
+    if (!handle) return;
+
+    const row = handle.closest("tr");
+    if (!row) return;
+
+    e.preventDefault();
+    e.stopPropagation(); // keep sidebar open
+
+    const rect = row.getBoundingClientRect();
+    const tbody = shortcutListContainer.querySelector("tbody");
+
+    // Proxy table so the clone renders exactly like the original
+    const proxyTable = document.createElement("table");
+    proxyTable.className = "table is-fullwidth is-hoverable";
+    proxyTable.style.cssText = `
+      position: fixed; z-index: 9999; pointer-events: none; opacity: 0.95;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.35); width: ${rect.width}px;
+      border-collapse: separate; margin: 0;
+    `;
+    const proxyTbody = document.createElement("tbody");
+    proxyTbody.appendChild(row.cloneNode(true));
+    proxyTable.appendChild(proxyTbody);
+    document.body.appendChild(proxyTable);
+
+    row.classList.add("dragging-source");
+    document.body.style.cursor = "grabbing";
+
+    dragState = {
+      row,
+      proxy: proxyTable,
+      offsetY: e.clientY - rect.top,
+      startIdx: +row.querySelector("[data-idx]").dataset.idx,
+      tbody,
+    };
+
+    moveProxy(e);
+
+    document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerup", onPointerUp);
+    document.addEventListener("pointercancel", onPointerUp);
+  });
+
+  /* Click handler for copy / edit / delete */
+  shortcutListContainer.addEventListener("click", (e) => {
+    e.stopPropagation(); // keep sidebar open
+
+    const removeBtn = e.target.closest(".remove-shortcut");
+    const editBtn = e.target.closest(".edit-shortcut");
+    const copyBtn = e.target.closest(".copy-shortcut");
 
     if (removeBtn) {
       const idx = +removeBtn.dataset.idx;
-      list = getCustomShortcuts();
+      const list = getCustomShortcuts();
       list.splice(idx, 1);
       saveCustomShortcuts(list);
       renderCustomShortcuts();
@@ -299,8 +364,105 @@ if (shortcutListContainer) {
   });
 }
 
+function moveProxy(e) {
+  if (!dragState) return;
+  dragState.proxy.style.top = (e.clientY - dragState.offsetY) + "px";
+  dragState.proxy.style.left = dragState.row.getBoundingClientRect().left + "px";
+}
+
+function onPointerMove(e) {
+  if (!dragState) return;
+  moveProxy(e);
+
+  const { tbody, row } = dragState;
+  const rows = Array.from(tbody.querySelectorAll("tr:not(.dragging-source)"));
+
+  let insertBefore = null;
+  for (const r of rows) {
+    const rect = r.getBoundingClientRect();
+    if (e.clientY < rect.top + rect.height / 2) {
+      insertBefore = r;
+      break;
+    }
+  }
+
+  document.querySelectorAll(".drop-indicator").forEach((el) => el.remove());
+  const indicator = document.createElement("tr");
+  indicator.className = "drop-indicator";
+  indicator.innerHTML = '<td colspan="3" style="height:3px;background:#48c78e;padding:0;border:none;"></td>';
+  if (insertBefore) {
+    tbody.insertBefore(indicator, insertBefore);
+  } else {
+    tbody.appendChild(indicator);
+  }
+
+  dragState.insertBefore = insertBefore;
+}
+
+function onPointerUp(e) {
+  if (!dragState) return;
+
+  const { row, proxy, startIdx, tbody, insertBefore } = dragState;
+
+  proxy.remove();
+  document.querySelectorAll(".drop-indicator").forEach((el) => el.remove());
+
+  const rows = Array.from(tbody.querySelectorAll("tr:not(.dragging-source)"));
+  let newIdx = rows.length;
+  if (insertBefore) {
+    newIdx = rows.indexOf(insertBefore);
+  }
+
+  if (insertBefore) {
+    tbody.insertBefore(row, insertBefore);
+  } else {
+    tbody.appendChild(row);
+  }
+
+  row.classList.remove("dragging-source");
+  document.body.style.cursor = "";
+
+  if (newIdx !== startIdx) {
+    const list = getCustomShortcuts();
+    const [moved] = list.splice(startIdx, 1);
+    list.splice(newIdx, 0, moved);
+    saveCustomShortcuts(list);
+
+    row.classList.add("flash");
+    setTimeout(() => row.classList.remove("flash"), 500);
+  }
+
+  updateRowIndices(tbody);
+  renderShortcutIconsBar();
+
+  document.removeEventListener("pointermove", onPointerMove);
+  document.removeEventListener("pointerup", onPointerUp);
+  document.removeEventListener("pointercancel", onPointerUp);
+  dragState = null;
+}
+
+function updateRowIndices(tbody) {
+  tbody.querySelectorAll("tr").forEach((r, idx) => {
+    r.querySelectorAll("[data-idx]").forEach((el) => (el.dataset.idx = idx));
+  });
+}
+
+/* ─── Render table ────────────────────────────────────────────────────────── */
+
 function renderCustomShortcuts() {
   if (!shortcutListContainer) return;
+
+  // Abort any active drag so we don't leave ghost elements behind
+  if (dragState) {
+    dragState.proxy.remove();
+    document.querySelectorAll(".drop-indicator").forEach((el) => el.remove());
+    document.removeEventListener("pointermove", onPointerMove);
+    document.removeEventListener("pointerup", onPointerUp);
+    document.removeEventListener("pointercancel", onPointerUp);
+    dragState = null;
+    document.body.style.cursor = "";
+  }
+
   const list = getCustomShortcuts();
 
   if (!list.length) {
@@ -314,22 +476,24 @@ function renderCustomShortcuts() {
       const safeUrl = escapeHtml(item.url);
       const displayUrl = item.url.length > 15 ? escapeHtml(item.url.slice(0, 15)) + "..." : safeUrl;
       return `
-      <tr>
+      <tr class="shortcut-row">
         <td><b>${escapeHtml(item.key)}</b></td>
         <td><a href="${safeUrl}" target="_blank" title="${safeUrl}">${displayUrl}</a></td>
         <td style="width:1%;white-space:nowrap">
+          <span class="drag-handle" title="Drag to reorder"><i class="fas fa-grip-vertical"></i></span>
           <button class="button is-small is-info mr-1 copy-shortcut" data-url="${safeUrl}" title="Copy Link"><i class="fas fa-copy"></i></button>
           <button class="button is-small is-warning mr-1 edit-shortcut" data-idx="${idx}" title="Edit"><i class="fas fa-edit"></i></button>
           <button class="button is-small is-danger is-outlined remove-shortcut" data-idx="${idx}" title="Remove"><i class="fas fa-trash"></i></button>
         </td>
-      </tr>
-    `;
+      </tr>`;
     })
     .join("");
   table += `</tbody></table>`;
   shortcutListContainer.innerHTML = table;
   renderShortcutIconsBar();
 }
+
+/* ─── Storage ─────────────────────────────────────────────────────────────── */
 
 function getCustomShortcuts() {
   try {
@@ -343,6 +507,8 @@ function saveCustomShortcuts(list) {
   localStorage.setItem("customShortcuts", JSON.stringify(list));
   renderShortcutIconsBar();
 }
+
+/* ─── Init ────────────────────────────────────────────────────────────────── */
 
 document.addEventListener("DOMContentLoaded", function () {
   const toggle = document.getElementById("toggle-shortcut-icons");
@@ -366,7 +532,8 @@ document.addEventListener("DOMContentLoaded", function () {
   renderCustomShortcuts();
 });
 
-// Performance Optimization: Flatten key checking loops into constant-time validation properties
+/* ─── Global keyboard shortcuts ───────────────────────────────────────────── */
+
 document.addEventListener("keydown", function (event) {
   const tag = document.activeElement.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA" || document.activeElement.isContentEditable) return;

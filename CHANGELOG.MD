@@ -1,5 +1,9 @@
 # Changelog
 
+## [Version 7.88.10]
+- Fix and standarized settings button design.
+- Shortcuts now allows you to move shortcuts around.
+
 ## [Version 7.88.9]
 - Added a rotating animation when you hover on "open-settings" button.
 - Added quote feature, thats 100% offline!
