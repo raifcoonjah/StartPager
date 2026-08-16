@@ -282,6 +282,10 @@ document.getElementById("open-custom-shortcut-modal").onclick = showCustomShortc
 
 let dragState = null;
 
+// Selector for "real" shortcut rows — excludes both the row currently being
+// dragged AND any leftover drop-indicator row.
+const REAL_ROW_SELECTOR = "tr.shortcut-row:not(.dragging-source)";
+
 /* ─── Shortcut list interactions ──────────────────────────────────────────── */
 
 if (shortcutListContainer) {
@@ -312,6 +316,12 @@ if (shortcutListContainer) {
     proxyTable.appendChild(proxyTbody);
     document.body.appendChild(proxyTable);
 
+    const initialNextSibling = row.nextElementSibling;
+    const initialInsertBefore =
+      initialNextSibling && initialNextSibling.classList.contains("shortcut-row")
+        ? initialNextSibling
+        : null;
+
     row.classList.add("dragging-source");
     document.body.style.cursor = "grabbing";
 
@@ -321,6 +331,8 @@ if (shortcutListContainer) {
       offsetY: e.clientY - rect.top,
       startIdx: +row.querySelector("[data-idx]").dataset.idx,
       tbody,
+      insertBefore: initialInsertBefore,
+      moved: false,
     };
 
     moveProxy(e);
@@ -372,10 +384,13 @@ function moveProxy(e) {
 
 function onPointerMove(e) {
   if (!dragState) return;
+  dragState.moved = true;
   moveProxy(e);
 
   const { tbody, row } = dragState;
-  const rows = Array.from(tbody.querySelectorAll("tr:not(.dragging-source)"));
+  document.querySelectorAll(".drop-indicator").forEach((el) => el.remove());
+
+  const rows = Array.from(tbody.querySelectorAll(REAL_ROW_SELECTOR));
 
   let insertBefore = null;
   for (const r of rows) {
@@ -386,7 +401,6 @@ function onPointerMove(e) {
     }
   }
 
-  document.querySelectorAll(".drop-indicator").forEach((el) => el.remove());
   const indicator = document.createElement("tr");
   indicator.className = "drop-indicator";
   indicator.innerHTML = '<td colspan="3" style="height:3px;background:#48c78e;padding:0;border:none;"></td>';
@@ -402,18 +416,29 @@ function onPointerMove(e) {
 function onPointerUp(e) {
   if (!dragState) return;
 
-  const { row, proxy, startIdx, tbody, insertBefore } = dragState;
+  const { row, proxy, startIdx, tbody, insertBefore, moved } = dragState;
 
   proxy.remove();
   document.querySelectorAll(".drop-indicator").forEach((el) => el.remove());
 
-  const rows = Array.from(tbody.querySelectorAll("tr:not(.dragging-source)"));
+  // If the pointer never moved, do nothing — don't touch order or storage.
+  if (!moved) {
+    row.classList.remove("dragging-source");
+    document.body.style.cursor = "";
+    document.removeEventListener("pointermove", onPointerMove);
+    document.removeEventListener("pointerup", onPointerUp);
+    document.removeEventListener("pointercancel", onPointerUp);
+    dragState = null;
+    return;
+  }
+
+  const rows = Array.from(tbody.querySelectorAll(REAL_ROW_SELECTOR));
   let newIdx = rows.length;
-  if (insertBefore) {
+  if (insertBefore && rows.includes(insertBefore)) {
     newIdx = rows.indexOf(insertBefore);
   }
 
-  if (insertBefore) {
+  if (insertBefore && insertBefore.isConnected) {
     tbody.insertBefore(row, insertBefore);
   } else {
     tbody.appendChild(row);
@@ -424,8 +449,8 @@ function onPointerUp(e) {
 
   if (newIdx !== startIdx) {
     const list = getCustomShortcuts();
-    const [moved] = list.splice(startIdx, 1);
-    list.splice(newIdx, 0, moved);
+    const [movedItem] = list.splice(startIdx, 1);
+    list.splice(newIdx, 0, movedItem);
     saveCustomShortcuts(list);
 
     row.classList.add("flash");
