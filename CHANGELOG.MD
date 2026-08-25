@@ -1,5 +1,22 @@
 # Changelog
 
+## [Version 7.88.11]
+- Redesigned toggle switches (shortcut icons, darken background, etc.) as an iOS-style slider instead of the default browser checkbox
+- Toggle now uses the accent color derived from your background image when Dynamic time color is enabled, with a static green fallback otherwise. This is a beta feature.
+- This release also includes some visual enhancement to the settings sidebar.
+- Added a "CHANGE LOG" section that loads from CHANGELOG.md on GitHub. To improve performance, it's only fetched when the sidebar is opened.
+
+##### Fixes
+- Fixed a bug where reordering shortcuts by dragging multiple rows in one motion could throw an error and cancel the drag partway through
+- Fixed a bug where clicking (without dragging) a shortcut's drag handle would incorrectly move it to the bottom of the list
+- Fixed glitch when dragging shortcuts.
+- Fix open-settings-btn icon color when switching to light mode.
+- Fixed sidebar feeling sluggish when opening, especially with a large settings list. The slide-in animation and the backdrop-filter blur were both kicking in at the same time, forcing the browser to recompute the blur on every frame while the panel was still moving.
+The blur now fades in only after the sidebar is mostly settled into place, instead of applying instantly. This removes the visible "pop" where the blur used to snap on abruptly.
+Slide-in remains a pure transform animation (GPU-composited, no layout cost) for the first half of the transition; the blur ramps in smoothly over the second half via its own dedicated CSS transition.
+
+
+
 ## [Version 7.88.10]
 - Fix and standarized settings button design.
 - Shortcuts now allows you to move shortcuts around.
