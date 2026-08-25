@@ -76,7 +76,7 @@
           </div>
 
           <!-- Background Section -->
-          <div class="settings-group">
+           <div class="settings-group">
             <h4 class="settings-group-title">Background</h4>
             <div class="settings-card">
               <div class="settings-item">
@@ -95,6 +95,18 @@
                   id="image_url"
                   placeholder="Enter or paste a URL"
                 />
+                <div class="control">
+                  <button
+                    id="copy-backgroundurl"
+                    class="button is-ghost is-small"
+                    aria-label="Copy background URL"
+                    style="display:none;"
+                  >
+                    <span class="icon is-small">
+                      <i class="fas fa-copy"></i>
+                    </span>
+                  </button>
+                </div>
                 <div class="control">
                   <button
                     id="random_unsplash_bg"
@@ -145,9 +157,8 @@
                 <div class="settings-item-content">
                   <h5 class="settings-item-title">Upload Background</h5>
                   <h6 class="settings-item-subtitle">
-                    Uploaded images will be converted to
-                    <code>base64</code> format and stored locally. Processing
-                    may take a few seconds.
+                    Uploaded images are compressed and stored locally in your
+                    browser's IndexedDB. Processing may take a few seconds.
                   </h6>
                 </div>
               </div>
@@ -438,7 +449,7 @@
                 <div class="settings-item-content">
                   <h5 class="settings-item-title">Start Pager</h5>
                   <h6 class="settings-item-subtitle">
-                    7.88.10 | bulma.io v1.0.4 (Apr 19, 2025)
+                    7.88.11.1 | bulma.io v1.0.4 (Apr 19, 2025)
                   </h6>
                 </div>
               </div>
@@ -481,14 +492,14 @@
               </div>
             </div>
           </div>
-        </div>
       </div>
       <!-- All the javascript needed to make Pager's core features work  -->
-      <script type="module" src="./src/js/background.js"></script>
-      <script type="module" src="./src/js/shortcut.js"></script>
-      <script type="module" src="./src/js/time.js"></script>
-      <script type="module" src="./src/js/setting.js"></script>
-      <script type="module" src="./src/js/quotes.js"></script>
+<script type="module" src="./src/js/time.js"></script>
+<script type="module" src="./src/js/background.js"></script>
+<script type="module" src="./src/js/shortcut.js"></script>
+<!-- these two only matter once the user interacts -->
+<script type="module" src="./src/js/setting.js" defer></script>
+<script type="module" src="./src/js/quotes.js" defer></script>
     </main>
   </body>
 </html>

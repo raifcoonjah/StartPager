@@ -59,22 +59,38 @@ document.getElementById("reset_button").addEventListener("click", function () {
 });
 
 const openBtn = document.getElementById("open_settings");
+const closeBtn = document.getElementById("close_sidebar");
 const sidebar = document.querySelector(".sidebar");
+const changelog = document.getElementById("changelog-container");
+
+function closeSidebar() {
+  sidebar.classList.remove("open", "blur-ready");
+  openBtn.classList.remove("is-hidden");
+  changelog.innerHTML = "";
+}
+
+sidebar.addEventListener("transitionend", function (e) {
+  if (e.propertyName === "transform" && sidebar.classList.contains("open")) {
+    sidebar.classList.add("blur-ready");
+  }
+});
 
 openBtn.addEventListener("click", function () {
   sidebar.classList.toggle("open");
   openBtn.classList.toggle("is-hidden");
+
+  if (sidebar.classList.contains("open")) {
+    fetchAndRenderLatestChangelog();
+  } else {
+    changelog.innerHTML = "";
+  }
 });
 
-document.getElementById("close_sidebar").addEventListener("click", function () {
-  sidebar.classList.remove("open");
-  openBtn.classList.remove("is-hidden");
-});
+closeBtn.addEventListener("click", closeSidebar);
 
 document.addEventListener("click", function (event) {
   if (!sidebar.contains(event.target) && !openBtn.contains(event.target)) {
-    sidebar.classList.remove("open");
-    openBtn.classList.remove("is-hidden");
+    closeSidebar();
   }
 });
 
@@ -397,7 +413,7 @@ document.addEventListener("DOMContentLoaded", function () {
   applyManualDarken();
 
   // Backup / restore
-  const backupBtn = document.getElementById("backup_button");
+const backupBtn = document.getElementById("backup_button");
   if (backupBtn) {
     backupBtn.addEventListener("click", backupLocalStorage);
   }
@@ -419,11 +435,39 @@ document.addEventListener("DOMContentLoaded", function () {
         showNotification("Please select a backup file first!", "is-warning is-light");
         return;
       }
-      if (!file.name.endsWith(".json")) {
+      if (!file.name.toLowerCase().endsWith(".json")) {
         showNotification("Please select a valid JSON backup file!", "is-danger is-light");
         return;
       }
-      restoreLocalStorage(file);
+      const MAX_BACKUP_SIZE = 5 * 1024 * 1024; // 5MB
+      if (file.size > MAX_BACKUP_SIZE) {
+        showNotification("That file is too large to be a valid backup.", "is-danger is-light");
+        return;
+      }
+
+      const confirmed = window.confirm(
+        "Restoring will overwrite your current shortcuts and settings with the contents of this backup. Continue?"
+      );
+      if (!confirmed) return;
+
+      restoreBtn.disabled = true;
+      const originalLabel = restoreBtn.innerHTML;
+      restoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Restoring...';
+
+      Promise.resolve(restoreLocalStorage(file))
+        .then(() => {
+          showNotification("Backup restored successfully.", "is-success is-light");
+        })
+        .catch((err) => {
+          showNotification("Failed to restore backup: invalid or corrupted file.", "is-danger is-light");
+          console.error("Restore failed:", err);
+        })
+        .finally(() => {
+          restoreBtn.disabled = false;
+          restoreBtn.innerHTML = originalLabel;
+          restoreFileInput.value = "";
+          restoreFileName.textContent = "No file selected!";
+        });
     });
   }
 });

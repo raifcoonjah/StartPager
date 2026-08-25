@@ -131,16 +131,16 @@ body {
     background-color: rgba(48, 48, 48, 0.576);
     color: #fff;
   }
+  .open-settings-btn i {
+    color: #fff;
+  }
 }
 
 /* ==========================================
    COMPONENTS
    ========================================== */
 .shortcut-icon {
-  transition:
-    transform 0.15s ease-out,
-    outline 0.15s ease-out;
-  border: 1px solid transparent !important;
+  transition: transform 0.15s ease-out, outline 0.15s ease-out;
   background-color: rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(5px);
   border: 1px solid rgba(220, 220, 225, 0.546) !important;
